@@ -81,21 +81,21 @@ def register_user(user_id, name, email, age, gender, phone, dept, encoding, user
     """Register a new user with predefined user_id"""
     df = load_db()
 
-    df.loc[len(df)] = [
-        user_id,
-        name,
-        email,
-        age,
-        gender,
-        phone, 
-        dept,
-        encoding,
-        user_type,
-        admin_pin if user_type == "admin" else None,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Never",  # last_login
-        "Never"   # last_logout
-    ]
+    df = pd.concat([df, pd.DataFrame([{
+        "user_id": user_id,
+        "name": name,
+        "email": email,
+        "age": age,
+        "gender": gender,
+        "phone": phone,
+        "dept": dept,
+        "face_encoding": encoding,
+        "user_type": user_type,
+        "admin_pin": admin_pin if user_type == "admin" else None,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_login": "Never",
+        "last_logout": "Never"
+    }])], ignore_index=True)
 
     save_db(df)
     return user_id

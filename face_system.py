@@ -1,8 +1,11 @@
 import cv2
-import face_recognition
 import numpy as np
 import os
 from datetime import datetime
+import face_recognition
+
+# Lazy import face_recognition to allow app to start
+face_recognition = None
 
 # Relaxed thresholds for real-world use
 BLUR_THRESHOLD = 40
@@ -13,6 +16,14 @@ BRIGHT_THRESHOLD = 220
 class FaceSystem:
 
     def __init__(self):
+        global face_recognition
+        if face_recognition is None:
+            try:
+                import face_recognition as fr
+                face_recognition = fr
+            except ImportError:
+                print("Warning: face_recognition not available")
+        
         self.breach_dir = "images/unidentified_logs"
         os.makedirs(self.breach_dir, exist_ok=True)
         

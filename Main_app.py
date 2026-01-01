@@ -24,19 +24,11 @@ class FaceApp(ctk.CTk):
         super().__init__()
         self.title("Fetch Details Of Person Based on Face Values")
         self.geometry("1600x900")
-        self.configure(fg_color="#050505")
+        self.configure(fg_color="#0a0a0a")
         
-        # Set background
+        # Initialize variables first
         self.bg_label = None
         self.bg_photo = None
-        self.set_background()
-
-        # Initialize system
-        db.init_database()
-        self.init_folder_structure()
-        self.cleanup_old_data()
-        
-        self.face = FaceSystem()
         self.cap = None
         self.current_frame = None
         self.current_user = None
@@ -47,7 +39,16 @@ class FaceApp(ctk.CTk):
         self.image_captured = False
         self.captured_encoding = None
         self.captured_frame = None
-        self.content_area = None
+        
+        # Set background
+        self.set_background()
+
+        # Initialize system
+        db.init_database()
+        self.init_folder_structure()
+        self.cleanup_old_data()
+        
+        self.face = FaceSystem()
 
         self.build_home()
 
@@ -56,8 +57,7 @@ class FaceApp(ctk.CTk):
         folders = [
             "images",
             "images/gallery",
-            "images/breach_logs",
-            "images/unidentified_logs"
+            "images/breach_logs"
         ]
         for folder in folders:
             os.makedirs(folder, exist_ok=True)
@@ -104,7 +104,6 @@ class FaceApp(ctk.CTk):
                         bg_img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
                     bg_img = bg_img.resize((1600, 900), Image.Resampling.LANCZOS)
                     self.bg_photo = ImageTk.PhotoImage(bg_img)
-                    
                     if self.bg_label is None:
                         self.bg_label = ctk.CTkLabel(self, image=self.bg_photo, text="")
                     else:
@@ -114,11 +113,11 @@ class FaceApp(ctk.CTk):
                 except Exception as e:
                     print(f"Background error: {e}")
         
-        # Fallback solid color
-        self.configure(fg_color="#050505")
+        # Create gradient background if no image found
+        self.configure(fg_color="#0a0a0a")
 
     def clear_screen(self):
-        """Clear screen but preserve background"""
+        """Clear screen but keep background"""
         if self.cap:
             self.cap.release()
             self.cap = None
@@ -134,10 +133,9 @@ class FaceApp(ctk.CTk):
         if not self.cap or not self.cap.isOpened():
             self.cap = cv2.VideoCapture(0)
             if not self.cap.isOpened():
-                msg.showerror("Error", "Could not open camera. Please check your camera connection.")
-                return False
+                msg.showerror("Error", "Could not open camera")
+                return
         self.update_camera()
-        return True
 
     def stop_camera(self):
         """Stop camera capture"""
@@ -146,7 +144,7 @@ class FaceApp(ctk.CTk):
             self.cap = None
 
     def update_camera(self):
-        """Update camera feed with face detection overlay"""
+        """Update camera feed"""
         if not self.cap or not self.cap.isOpened():
             return
 
@@ -160,51 +158,33 @@ class FaceApp(ctk.CTk):
         self.last_face_status = status
         self.face_locations = face_locs
         
-        # Draw rectangles on display frame
         display_frame = frame.copy()
         if face_locs:
             for (top, right, bottom, left) in face_locs:
-                # Scale back up since face detection was on smaller frame
                 top *= 2
                 right *= 2
                 bottom *= 2
                 left *= 2
                 color = (0, 255, 0) if status == "Face OK" else (0, 165, 255)
                 cv2.rectangle(display_frame, (left, top), (right, bottom), color, 3)
-                
-                # Add status text on frame
-                cv2.putText(display_frame, status, (left, top - 10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
         
-        # Convert to display format
         rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(rgb)
         imgtk = ctk.CTkImage(img, size=(640, 480))
         
-        # Update camera label if it exists
         if hasattr(self, 'camera_label') and self.camera_label.winfo_exists():
             self.camera_label.configure(image=imgtk, text="")
             self.camera_label.image = imgtk
 
-        # Update status label if it exists
         if hasattr(self, 'status_label') and self.status_label.winfo_exists():
-            if status == "Face OK":
-                self.status_label.configure(text=status, text_color="#22c55e")
-            elif "No Face" in status:
-                self.status_label.configure(text=status, text_color="#ff6b6b")
-            else:
-                self.status_label.configure(text=status, text_color="#ffcc00")
+            self.status_label.configure(text=status)
 
-        # Update capture button state
         if hasattr(self, "btn_capture") and self.btn_capture.winfo_exists():
-            if status == "Face OK":
-                self.btn_capture.configure(state="normal")
-            else:
-                self.btn_capture.configure(state="disabled")
+            self.btn_capture.configure(state="normal" if status == "Face OK" else "disabled")
 
         self.after(30, self.update_camera)
 
-    # ================= VALIDATION METHODS =================
+    # ================= VALIDATION =================
     def validate_email(self, email):
         """Validate email format"""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -233,7 +213,7 @@ class FaceApp(ctk.CTk):
         return len(dept.strip()) >= 2
 
     def validate_registration_form(self, user_type):
-        """Validate all registration fields and return list of errors"""
+        """Validate all registration fields"""
         errors = []
         
         # Name validation
@@ -286,7 +266,7 @@ class FaceApp(ctk.CTk):
         
         return errors
 
-    # ================= HOME SCREEN =================
+    # ================= HOME =================
     def build_home(self):
         """Build home screen"""
         self.clear_screen()
@@ -372,7 +352,7 @@ class FaceApp(ctk.CTk):
 
     # ================= REGISTER CHOICE =================
     def show_register_choice(self):
-        """Show registration type selection screen"""
+        """Show registration type selection"""
         self.clear_screen()
         self.set_background()
 
@@ -420,7 +400,7 @@ class FaceApp(ctk.CTk):
         # Center card
         card = ctk.CTkFrame(
             self,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=25,
@@ -438,15 +418,15 @@ class FaceApp(ctk.CTk):
         ).pack(pady=(50, 10))
 
         # Separator
-        separator = ctk.CTkFrame(card, height=2, fg_color="#ffffff")
+        separator = ctk.CTkFrame(card, height=2, fg_color="#444444")
         separator.pack(fill="x", padx=100, pady=10)
 
         ctk.CTkButton(
             card,
             text="Register as Admin",
             command=lambda: self.show_register("admin"),
-            fg_color="rgba(107, 45, 140, 0.4)",
-            hover_color="rgba(107, 45, 140, 0.6)",
+            fg_color="#2d1f3d",
+            hover_color="#3d2f4d",
             border_width=2,
             border_color="#6b2d8c",
             text_color="#ffffff",
@@ -460,8 +440,8 @@ class FaceApp(ctk.CTk):
             card,
             text="Register as General User",
             command=lambda: self.show_register("general_user"),
-            fg_color="rgba(59, 124, 184, 0.4)",
-            hover_color="rgba(59, 124, 184, 0.6)",
+            fg_color="#1f2d3d",
+            hover_color="#2f3d4d",
             border_width=2,
             border_color="#3b7cb8",
             text_color="#ffffff",
@@ -475,8 +455,8 @@ class FaceApp(ctk.CTk):
             card,
             text="Back",
             command=self.build_home,
-            fg_color="rgba(85, 85, 85, 0.4)",
-            hover_color="rgba(85, 85, 85, 0.6)",
+            fg_color="#2a2a2a",
+            hover_color="#3a3a3a",
             border_width=2,
             border_color="#555555",
             text_color="#ffffff",
@@ -486,14 +466,12 @@ class FaceApp(ctk.CTk):
             font=("Segoe UI", 14)
         ).pack(pady=30)
 
-    # ================= REGISTER FORM =================
+    # ================= REGISTER =================
     def show_register(self, user_type):
-        """Show registration form with all fields"""
+        """Show registration form"""
         self.clear_screen()
         self.set_background()
         self.image_captured = False
-        self.captured_encoding = None
-        self.captured_frame = None
 
         # Header
         header = ctk.CTkFrame(self, fg_color="transparent", height=80)
@@ -539,7 +517,7 @@ class FaceApp(ctk.CTk):
         # Main card with side-by-side layout
         card = ctk.CTkFrame(
             self,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=25
@@ -550,45 +528,37 @@ class FaceApp(ctk.CTk):
         ctk.CTkLabel(
             card,
             text=title,
-            font=("Segoe UI", 32, "bold"),
+            font=("Segoe UI", 28, "bold"),
             text_color="#ffffff"
-        ).pack(pady=(30, 10))
+        ).pack(pady=(20, 10))
 
         # Separator
-        separator = ctk.CTkFrame(card, height=2, fg_color="#ffffff")
-        separator.pack(fill="x", padx=100, pady=10)
+        separator = ctk.CTkFrame(card, height=2, fg_color="#444444")
+        separator.pack(fill="x", padx=100, pady=5)
 
         # Side-by-side container
         content_frame = ctk.CTkFrame(card, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=30, pady=20)
+        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        # LEFT SIDE - Form
+        # LEFT SIDE - Form (Scrollable)
         left_frame = ctk.CTkScrollableFrame(
             content_frame, 
             fg_color="transparent",
             width=420,
-            height=520
+            height=500
         )
-        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 15))
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
-        # Generate unique user ID
         new_user_id = f"{'ADM' if user_type == 'admin' else 'USR'}-{uuid.uuid4().hex[:6].upper()}"
         
-        # User ID (Auto-generated, read-only)
-        ctk.CTkLabel(
-            left_frame,
-            text="User ID (Auto-generated)",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
+        # User ID (Auto-generated)
         self.entry_userid = ctk.CTkEntry(
             left_frame,
-            placeholder_text="User ID",
-            width=400,
-            height=45,
+            placeholder_text="User ID (Auto-generated)",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             text_color="#888888",
@@ -596,167 +566,118 @@ class FaceApp(ctk.CTk):
         )
         self.entry_userid.insert(0, new_user_id)
         self.entry_userid.configure(state="disabled")
-        self.entry_userid.pack(pady=(0, 8))
+        self.entry_userid.pack(pady=6)
 
         # Full Name
-        ctk.CTkLabel(
-            left_frame,
-            text="Full Name *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
         self.entry_name = ctk.CTkEntry(
             left_frame,
-            placeholder_text="Enter first and last name",
-            width=400,
-            height=45,
+            placeholder_text="Full Name *",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             font=("Segoe UI", 12)
         )
-        self.entry_name.pack(pady=(0, 8))
+        self.entry_name.pack(pady=6)
 
-        # Email ID
-        ctk.CTkLabel(
-            left_frame,
-            text="Email ID *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
+        # Email
         self.entry_email = ctk.CTkEntry(
             left_frame,
-            placeholder_text="example@email.com",
-            width=400,
-            height=45,
+            placeholder_text="Email ID *",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             font=("Segoe UI", 12)
         )
-        self.entry_email.pack(pady=(0, 8))
+        self.entry_email.pack(pady=6)
 
         # Age
-        ctk.CTkLabel(
-            left_frame,
-            text="Age *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
         self.entry_age = ctk.CTkEntry(
             left_frame,
-            placeholder_text="Enter age (1-120)",
-            width=400,
-            height=45,
+            placeholder_text="Age *",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             font=("Segoe UI", 12)
         )
-        self.entry_age.pack(pady=(0, 8))
+        self.entry_age.pack(pady=6)
 
         # Gender Dropdown
-        ctk.CTkLabel(
-            left_frame,
-            text="Gender *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
         self.gender_var = ctk.StringVar(value="Select Gender")
         self.gender_dropdown = ctk.CTkOptionMenu(
             left_frame,
             variable=self.gender_var,
             values=["Male", "Female"],
-            width=400,
-            height=45,
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             button_color="#3b7cb8",
             button_hover_color="#2d5f8d",
             dropdown_fg_color="#2a2a2a",
             dropdown_hover_color="#3a3a3a",
             font=("Segoe UI", 12)
         )
-        self.gender_dropdown.pack(pady=(0, 8))
+        self.gender_dropdown.pack(pady=6)
 
         # Phone Number
-        ctk.CTkLabel(
-            left_frame,
-            text="Phone Number *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
         self.entry_phone = ctk.CTkEntry(
             left_frame,
-            placeholder_text="10 digit phone number",
-            width=400,
-            height=45,
+            placeholder_text="Phone Number (10 digits) *",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             font=("Segoe UI", 12)
         )
-        self.entry_phone.pack(pady=(0, 8))
+        self.entry_phone.pack(pady=6)
 
         # Department
-        ctk.CTkLabel(
-            left_frame,
-            text="Department *",
-            font=("Segoe UI", 11),
-            text_color="#888888"
-        ).pack(anchor="w", padx=10, pady=(5, 0))
-        
         self.entry_dept = ctk.CTkEntry(
             left_frame,
-            placeholder_text="Enter department",
-            width=400,
-            height=45,
+            placeholder_text="Department *",
+            width=380,
+            height=42,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
             font=("Segoe UI", 12)
         )
-        self.entry_dept.pack(pady=(0, 8))
+        self.entry_dept.pack(pady=6)
 
-        # Admin PIN (only for admin registration)
+        # Admin PIN (only for admin)
         if user_type == "admin":
-            ctk.CTkLabel(
-                left_frame,
-                text="Admin PIN *",
-                font=("Segoe UI", 11),
-                text_color="#888888"
-            ).pack(anchor="w", padx=10, pady=(5, 0))
-            
             self.entry_pin = ctk.CTkEntry(
                 left_frame,
-                placeholder_text="4 digit PIN",
-                width=400,
-                height=45,
+                placeholder_text="Admin PIN (4 digits) *",
+                width=380,
+                height=42,
                 corner_radius=50,
-                fg_color="rgba(40, 40, 40, 0.6)",
+                fg_color="#2a2a2a",
                 border_width=2,
                 border_color="#333333",
                 show="*",
                 font=("Segoe UI", 12)
             )
-            self.entry_pin.pack(pady=(0, 8))
+            self.entry_pin.pack(pady=6)
 
         # Required fields note
         ctk.CTkLabel(
             left_frame,
-            text="* All fields are required",
+            text="* Required fields",
             font=("Segoe UI", 10),
-            text_color="#ff6b6b"
+            text_color="#888888"
         ).pack(pady=5)
 
         # Capture Button
@@ -764,58 +685,60 @@ class FaceApp(ctk.CTk):
             left_frame,
             text="📷 Capture from Webcam",
             command=lambda: self.start_camera_capture(user_type, new_user_id),
-            fg_color="rgba(59, 124, 184, 0.4)",
-            hover_color="rgba(59, 124, 184, 0.6)",
+            fg_color="#1f2d3d",
+            hover_color="#2f3d4d",
             border_width=2,
             border_color="#3b7cb8",
             text_color="#ffffff",
-            width=400,
-            height=50,
+            width=380,
+            height=45,
             corner_radius=50,
             font=("Segoe UI", 13, "bold")
         )
-        self.btn_capture.pack(pady=10)
+        self.btn_capture.pack(pady=8)
 
         # Upload Button
         self.btn_upload = ctk.CTkButton(
             left_frame,
             text="📁 Upload Image File",
             command=lambda: self.upload_register(user_type, new_user_id),
-            fg_color="rgba(184, 115, 59, 0.4)",
-            hover_color="rgba(184, 115, 59, 0.6)",
+            fg_color="#3d2a1f",
+            hover_color="#4d3a2f",
             border_width=2,
             border_color="#b8733b",
             text_color="#ffffff",
-            width=400,
-            height=50,
+            width=380,
+            height=45,
             corner_radius=50,
             font=("Segoe UI", 13, "bold")
         )
-        self.btn_upload.pack(pady=10)
+        self.btn_upload.pack(pady=8)
 
         # Final Register Button
         self.btn_final_register = ctk.CTkButton(
             left_frame,
             text="✓ Complete Registration",
             command=lambda: self.complete_registration(user_type, new_user_id),
-            fg_color="#22c55e",
-            hover_color="#16a34a",
+            fg_color="#1a3d1a",
+            hover_color="#2a4d2a",
+            border_width=2,
+            border_color="#22c55e",
             text_color="#ffffff",
-            width=400,
+            width=380,
             height=50,
             corner_radius=50,
-            font=("Segoe UI", 14, "bold"),
-            state="disabled"
+            font=("Segoe UI", 14, "bold")
         )
         self.btn_final_register.pack(pady=10)
+        self.btn_final_register.configure(state="disabled")
 
         # Back Button
         ctk.CTkButton(
             left_frame,
             text="← Back",
             command=self.show_register_choice,
-            fg_color="rgba(85, 85, 85, 0.4)",
-            hover_color="rgba(85, 85, 85, 0.6)",
+            fg_color="#2a2a2a",
+            hover_color="#3a3a3a",
             border_width=2,
             border_color="#555555",
             text_color="#ffffff",
@@ -834,7 +757,7 @@ class FaceApp(ctk.CTk):
             text="📷 Camera Preview\n\nClick 'Capture from Webcam'\nto start camera",
             width=640,
             height=480,
-            fg_color="rgba(20, 20, 20, 0.7)",
+            fg_color="#1a1a1a",
             corner_radius=15,
             font=("Segoe UI", 14),
             text_color="#888888"
@@ -850,13 +773,13 @@ class FaceApp(ctk.CTk):
         self.status_label.pack(pady=10)
 
     def start_camera_capture(self, user_type, user_id):
-        """Start camera for capturing face"""
-        self.camera_label.configure(text="Starting camera...", fg_color="rgba(20, 20, 20, 0.7)")
-        if self.start_camera():
-            self.btn_capture.configure(
-                text="📸 Capture Image", 
-                command=lambda: self.capture_image(user_type, user_id)
-            )
+        """Start camera for capturing"""
+        self.camera_label.configure(text="Starting camera...", fg_color="#1a1a1a")
+        self.start_camera()
+        self.btn_capture.configure(
+            text="📸 Capture Image", 
+            command=lambda: self.capture_image(user_type, user_id)
+        )
 
     def capture_image(self, user_type, user_id):
         """Capture image from camera"""
@@ -867,7 +790,7 @@ class FaceApp(ctk.CTk):
         enc, status, _ = self.face.process(self.current_frame)
         
         if status != "Face OK":
-            msg.showerror("Error", f"Cannot capture: {status}\n\nPlease ensure:\n• Good lighting\n• Face clearly visible\n• Only one person in frame\n• Hold still")
+            msg.showerror("Error", f"Cannot capture: {status}")
             return
 
         self.captured_encoding = enc
@@ -889,8 +812,8 @@ class FaceApp(ctk.CTk):
         
         # Update buttons
         self.btn_capture.configure(
-            fg_color="#22c55e", 
-            border_color="#16a34a", 
+            fg_color="#1a3d1a", 
+            border_color="#22c55e", 
             text="✓ Image Captured",
             state="disabled"
         )
@@ -910,15 +833,12 @@ class FaceApp(ctk.CTk):
         enc, status, _ = self.face.process(img)
         
         if status != "Face OK":
-            msg.showerror("Error", f"Cannot use this image: {status}\n\nPlease use an image with:\n• Clear face visible\n• Good lighting\n• Single person only")
+            msg.showerror("Error", f"Cannot use this image: {status}")
             return
 
         self.captured_encoding = enc
         self.captured_frame = img
         self.image_captured = True
-        
-        # Stop camera if running
-        self.stop_camera()
         
         # Show uploaded image
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -932,14 +852,14 @@ class FaceApp(ctk.CTk):
         
         # Update buttons
         self.btn_upload.configure(
-            fg_color="#22c55e", 
-            border_color="#16a34a", 
+            fg_color="#1a3d1a", 
+            border_color="#22c55e", 
             text="✓ Image Uploaded"
         )
         self.btn_final_register.configure(state="normal")
 
     def complete_registration(self, user_type, user_id):
-        """Complete the registration process with validation"""
+        """Complete the registration process"""
         # Validate image
         if not self.image_captured:
             msg.showerror("Error", "Please capture or upload an image first")
@@ -948,8 +868,7 @@ class FaceApp(ctk.CTk):
         # Validate form
         errors = self.validate_registration_form(user_type)
         if errors:
-            error_message = "Please fix the following errors:\n\n" + "\n".join(f"• {e}" for e in errors)
-            msg.showerror("Validation Error", error_message)
+            msg.showerror("Validation Error", "\n".join(errors))
             return
 
         # Get form values
@@ -961,7 +880,7 @@ class FaceApp(ctk.CTk):
         dept = self.entry_dept.get().strip()
         pin = self.entry_pin.get().strip() if user_type == "admin" else None
 
-        # Register user in database
+        # Register user
         db.register_user(
             user_id,
             name,
@@ -980,12 +899,12 @@ class FaceApp(ctk.CTk):
         os.makedirs(user_dir, exist_ok=True)
         cv2.imwrite(os.path.join(user_dir, "register_img.jpg"), self.captured_frame)
 
-        msg.showinfo("Success", f"✓ Registration Successful!\n\nUser ID: {user_id}\nName: {name}\nType: {user_type.replace('_', ' ').title()}\n\nYou can now login using face recognition.")
+        msg.showinfo("Success", f"✓ Registration Successful!\n\nUser ID: {user_id}\n\nYou can now login using your face.")
         self.build_home()
-        
+
     # ================= LOGIN =================
     def show_login(self):
-        """Show login screen with camera"""
+        """Show login screen"""
         self.clear_screen()
         self.set_background()
         self.image_captured = False
@@ -1034,7 +953,7 @@ class FaceApp(ctk.CTk):
         # Main card
         card = ctk.CTkFrame(
             self,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=25
@@ -1049,7 +968,7 @@ class FaceApp(ctk.CTk):
         ).pack(pady=(30, 10))
 
         # Separator
-        separator = ctk.CTkFrame(card, height=2, fg_color="#ffffff")
+        separator = ctk.CTkFrame(card, height=2, fg_color="#444444")
         separator.pack(fill="x", padx=100, pady=10)
 
         self.camera_label = ctk.CTkLabel(
@@ -1057,14 +976,14 @@ class FaceApp(ctk.CTk):
             text="Starting Camera...",
             width=640,
             height=480,
-            fg_color="rgba(20, 20, 20, 0.7)",
+            fg_color="#1a1a1a",
             corner_radius=15
         )
         self.camera_label.pack(padx=30, pady=20)
 
         self.status_label = ctk.CTkLabel(
             card,
-            text="Initializing...",
+            text="Initializing",
             font=("Segoe UI", 16, "bold"),
             text_color="#ffcc00"
         )
@@ -1072,7 +991,7 @@ class FaceApp(ctk.CTk):
 
         self.btn_capture = ctk.CTkButton(
             card,
-            text="🔍 Verify Face",
+            text="Verify Face",
             state="disabled",
             command=self.capture_login,
             fg_color="#3b7cb8",
@@ -1089,8 +1008,8 @@ class FaceApp(ctk.CTk):
             card,
             text="Back",
             command=self.build_home,
-            fg_color="rgba(85, 85, 85, 0.4)",
-            hover_color="rgba(85, 85, 85, 0.6)",
+            fg_color="#2a2a2a",
+            hover_color="#3a3a3a",
             border_width=2,
             border_color="#555555",
             text_color="#ffffff",
@@ -1116,14 +1035,13 @@ class FaceApp(ctk.CTk):
 
         df = db.get_all_users()
         if df.empty:
-            msg.showerror("Denied", "No users registered in the system.\n\nPlease register first.")
+            msg.showerror("Denied", "No users registered")
             return
             
         known = [np.array(json.loads(e)) for e in df["face_encoding"]]
         matches = face_recognition.compare_faces(known, enc, tolerance=0.45)
 
         if True not in matches:
-            # Handle failed login attempt
             attempt_key = "unknown_face"
             if attempt_key not in self.login_attempts:
                 self.login_attempts[attempt_key] = {"count": 0, "images": []}
@@ -1132,7 +1050,6 @@ class FaceApp(ctk.CTk):
             self.login_attempts[attempt_key]["images"].append(self.current_frame.copy())
             
             if self.login_attempts[attempt_key]["count"] >= 3:
-                # Save breach images
                 today = datetime.now().strftime("%Y-%m-%d")
                 breach_dir = os.path.join("images/breach_logs", today)
                 os.makedirs(breach_dir, exist_ok=True)
@@ -1143,50 +1060,43 @@ class FaceApp(ctk.CTk):
                     cv2.imwrite(os.path.join(breach_dir, filename), img)
                 
                 self.login_attempts[attempt_key] = {"count": 0, "images": []}
-                msg.showerror("Access Denied", "⚠️ Face not recognized!\n\nMaximum attempts reached.\nThis incident has been logged to breach records.")
+                msg.showerror("Denied", "Face not recognized\nMaximum attempts reached. Logged to breach records.")
             else:
-                remaining = 3 - self.login_attempts[attempt_key]['count']
-                msg.showerror("Access Denied", f"Face not recognized\n\nAttempts remaining: {remaining}")
+                msg.showerror("Denied", f"Face not recognized\nAttempt {self.login_attempts[attempt_key]['count']}/3")
             return
 
-        # Successful match
         self.current_user = df.iloc[matches.index(True)].to_dict()
         
-        # Save login image
         user_dir = os.path.join("images/gallery", self.current_user["user_id"])
         os.makedirs(user_dir, exist_ok=True)
         login_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         cv2.imwrite(os.path.join(user_dir, f"login_{login_timestamp}.jpg"), self.current_frame)
         
-        # Update login timestamp
         db.update_login_timestamp(self.current_user["user_id"])
         
-        # Check if admin needs PIN
         if self.current_user["user_type"] == "admin":
             self.show_pin_dialog()
         else:
             self.current_user_type = "general_user"
-            self.stop_camera()
             self.show_dashboard()
 
     def show_pin_dialog(self):
-        """Show PIN entry dialog for admin verification"""
+        """Show PIN entry dialog for admin"""
         self.stop_camera()
         
         dialog = ctk.CTkToplevel(self)
-        dialog.title("Admin PIN Verification")
-        dialog.geometry("500x320")
+        dialog.title("Admin PIN")
+        dialog.geometry("500x300")
         dialog.transient(self)
         dialog.grab_set()
-        dialog.configure(fg_color="#050505")
-        dialog.resizable(False, False)
+        dialog.configure(fg_color="#0a0a0a")
         
         # Center the dialog
-        dialog.geometry("+%d+%d" % (self.winfo_x() + 550, self.winfo_y() + 290))
+        dialog.geometry("+%d+%d" % (self.winfo_x() + 550, self.winfo_y() + 300))
 
         frame = ctk.CTkFrame(
             dialog,
-            fg_color="rgba(51, 51, 51, 0.9)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1195,22 +1105,22 @@ class FaceApp(ctk.CTk):
 
         ctk.CTkLabel(
             frame,
-            text="🔐 Enter Admin PIN",
+            text="Enter Admin PIN",
             font=("Segoe UI", 24, "bold"),
             text_color="#ffffff"
         ).pack(pady=30)
 
         pin_entry = ctk.CTkEntry(
             frame,
-            placeholder_text="••••",
+            placeholder_text="4-digit PIN",
             width=300,
             height=50,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
-            show="•",
-            font=("Segoe UI", 18),
+            show="*",
+            font=("Segoe UI", 14),
             justify="center"
         )
         pin_entry.pack(pady=20)
@@ -1224,8 +1134,7 @@ class FaceApp(ctk.CTk):
                 dialog.destroy()
                 self.show_dashboard()
             else:
-                msg.showerror("Error", "Incorrect PIN. Please try again.")
-                pin_entry.delete(0, 'end')
+                msg.showerror("Error", "Incorrect PIN")
 
         ctk.CTkButton(
             frame,
@@ -1245,7 +1154,7 @@ class FaceApp(ctk.CTk):
 
     # ================= DASHBOARD =================
     def show_dashboard(self):
-        """Show dashboard after successful login"""
+        """Show dashboard after login"""
         self.clear_screen()
         self.set_background()
         
@@ -1259,19 +1168,19 @@ class FaceApp(ctk.CTk):
         sidebar = ctk.CTkFrame(
             main,
             width=280,
-            fg_color="rgba(30, 30, 30, 0.95)",
+            fg_color="#1a1a1a",
             corner_radius=0
         )
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
-        # User welcome section
+        # User info in sidebar
         ctk.CTkLabel(
             sidebar,
-            text="Welcome,",
+            text=f"Welcome,",
             font=("Segoe UI", 14),
             text_color="#888888"
-        ).pack(pady=(40, 0))
+        ).pack(pady=(30, 0))
         
         ctk.CTkLabel(
             sidebar,
@@ -1280,24 +1189,21 @@ class FaceApp(ctk.CTk):
             text_color="#ffffff"
         ).pack(pady=(5, 5))
         
-        role_text = "👑 Administrator" if is_admin else "👤 General User"
-        role_color = "#6b2d8c" if is_admin else "#3b7cb8"
         ctk.CTkLabel(
             sidebar,
-            text=role_text,
+            text=f"{'Administrator' if is_admin else 'General User'}",
             font=("Segoe UI", 12),
-            text_color=role_color
+            text_color="#3b7cb8" if not is_admin else "#6b2d8c"
         ).pack(pady=(0, 30))
 
         # Separator
         ctk.CTkFrame(sidebar, height=2, fg_color="#333333").pack(fill="x", padx=20, pady=10)
 
-        # Menu button style
         menu_btn_style = {
-            "fg_color": "rgba(59, 124, 184, 0.3)",
-            "hover_color": "rgba(59, 124, 184, 0.5)",
+            "fg_color": "#2a2a2a",
+            "hover_color": "#3a3a3a",
             "border_width": 2,
-            "border_color": "rgba(59, 124, 184, 0.6)",
+            "border_color": "#3b7cb8",
             "text_color": "#ffffff",
             "width": 240,
             "height": 50,
@@ -1315,11 +1221,7 @@ class FaceApp(ctk.CTk):
 
         if is_admin:
             admin_btn_style = menu_btn_style.copy()
-            admin_btn_style.update({
-                "fg_color": "rgba(107, 45, 140, 0.3)",
-                "hover_color": "rgba(107, 45, 140, 0.5)",
-                "border_color": "rgba(107, 45, 140, 0.6)"
-            })
+            admin_btn_style["border_color"] = "#6b2d8c"
             
             ctk.CTkButton(
                 sidebar,
@@ -1342,13 +1244,14 @@ class FaceApp(ctk.CTk):
                 **admin_btn_style
             ).pack(pady=12, padx=20)
 
-        # Logout button at bottom
         ctk.CTkButton(
             sidebar,
             text="🚪 Logout",
             command=self.logout,
-            fg_color="#d32f2f",
-            hover_color="#b71c1c",
+            fg_color="#3d1a1a",
+            hover_color="#4d2a2a",
+            border_width=2,
+            border_color="#d32f2f",
             text_color="#ffffff",
             width=240,
             height=55,
@@ -1360,17 +1263,16 @@ class FaceApp(ctk.CTk):
         self.content_area = ctk.CTkFrame(main, fg_color="transparent")
         self.content_area.pack(side="right", fill="both", expand=True, padx=30, pady=30)
 
-        # Show profile by default
         self.show_profile_view(user)
 
     def show_profile_view(self, user):
-        """Show user profile with editable fields"""
+        """Show user profile"""
         for w in self.content_area.winfo_children():
             w.destroy()
 
         profile_frame = ctk.CTkScrollableFrame(
             self.content_area,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1379,7 +1281,7 @@ class FaceApp(ctk.CTk):
 
         ctk.CTkLabel(
             profile_frame,
-            text="👤 My Profile",
+            text="My Profile",
             font=("Segoe UI", 36, "bold"),
             text_color="#ffffff"
         ).pack(pady=30)
@@ -1392,7 +1294,6 @@ class FaceApp(ctk.CTk):
                 img = Image.open(register_img[0])
                 img = img.resize((200, 200), Image.Resampling.LANCZOS)
                 
-                # Create circular mask
                 mask = Image.new('L', (200, 200), 0)
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse((0, 0, 200, 200), fill=255)
@@ -1411,7 +1312,6 @@ class FaceApp(ctk.CTk):
         form_frame = ctk.CTkFrame(profile_frame, fg_color="transparent")
         form_frame.pack(pady=20, padx=50)
 
-        # Define fields with editability
         fields = [
             ("User ID", user.get("user_id", ""), False),
             ("Name", user.get("name", ""), True),
@@ -1420,8 +1320,7 @@ class FaceApp(ctk.CTk):
             ("Gender", user.get("gender", ""), False),
             ("Phone", user.get("phone", ""), True),
             ("Department", user.get("dept", ""), True),
-            ("User Type", str(user.get("user_type", "")).replace("_", " ").title(), False),
-            ("Created At", user.get("created_at", "N/A"), False),
+            ("User Type", user.get("user_type", "").replace("_", " ").title(), False),
             ("Last Login", user.get("last_login", "Never"), False),
             ("Last Logout", user.get("last_logout", "Never"), False),
         ]
@@ -1429,7 +1328,7 @@ class FaceApp(ctk.CTk):
         entries = {}
         for field, value, editable in fields:
             field_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-            field_frame.pack(pady=10, fill="x")
+            field_frame.pack(pady=8, fill="x")
             
             ctk.CTkLabel(
                 field_frame,
@@ -1443,9 +1342,9 @@ class FaceApp(ctk.CTk):
             entry = ctk.CTkEntry(
                 field_frame,
                 width=350,
-                height=45,
+                height=42,
                 corner_radius=50,
-                fg_color="rgba(40, 40, 40, 0.6)",
+                fg_color="#2a2a2a",
                 border_width=2,
                 border_color="#333333" if editable else "#222222",
                 text_color="#ffffff" if editable else "#888888",
@@ -1470,16 +1369,16 @@ class FaceApp(ctk.CTk):
                     
                     # Validation
                     if f == "Email" and not self.validate_email(new_val):
-                        msg.showerror("Error", "Invalid email format (e.g., user@example.com)")
+                        msg.showerror("Error", "Invalid email format")
                         return
                     if f == "Phone" and not self.validate_phone(new_val):
-                        msg.showerror("Error", "Phone must be exactly 10 digits")
+                        msg.showerror("Error", "Phone must be 10 digits")
                         return
                     if f == "Name" and not self.validate_name(new_val):
-                        msg.showerror("Error", "Name must have first and last name (letters only)")
+                        msg.showerror("Error", "Name must have first and last name")
                         return
                     if f == "Age" and not self.validate_age(new_val):
-                        msg.showerror("Error", "Age must be between 1 and 120")
+                        msg.showerror("Error", "Age must be 1-120")
                         return
                     
                     db.update_user_field(user["user_id"], field_map[f], new_val)
@@ -1490,13 +1389,13 @@ class FaceApp(ctk.CTk):
                     field_frame,
                     text="Save",
                     command=save_field,
-                    fg_color="rgba(59, 124, 184, 0.4)",
-                    hover_color="rgba(59, 124, 184, 0.6)",
+                    fg_color="#1f2d3d",
+                    hover_color="#2f3d4d",
                     border_width=2,
                     border_color="#3b7cb8",
                     text_color="#ffffff",
-                    width=100,
-                    height=40,
+                    width=80,
+                    height=38,
                     corner_radius=50,
                     font=("Segoe UI", 12, "bold")
                 ).pack(side="left", padx=10)
@@ -1507,8 +1406,8 @@ class FaceApp(ctk.CTk):
                 form_frame,
                 text="🔐 Change Admin PIN",
                 command=lambda: self.change_admin_pin(user["user_id"]),
-                fg_color="rgba(107, 45, 140, 0.4)",
-                hover_color="rgba(107, 45, 140, 0.6)",
+                fg_color="#2d1f3d",
+                hover_color="#3d2f4d",
                 border_width=2,
                 border_color="#6b2d8c",
                 text_color="#ffffff",
@@ -1520,7 +1419,7 @@ class FaceApp(ctk.CTk):
 
         # Delete account button
         def delete_account():
-            if msg.askyesno("Confirm Delete", "Are you sure you want to delete your account?\n\nThis action cannot be undone.\nAll your data and images will be permanently deleted."):
+            if msg.askyesno("Confirm", "Are you sure you want to delete your account?\nThis action cannot be undone."):
                 db.delete_user(user["user_id"])
                 msg.showinfo("Success", "✓ Account deleted successfully!")
                 self.current_user = None
@@ -1531,8 +1430,10 @@ class FaceApp(ctk.CTk):
             profile_frame,
             text="🗑️ Delete Account",
             command=delete_account,
-            fg_color="#d32f2f",
-            hover_color="#b71c1c",
+            fg_color="#3d1a1a",
+            hover_color="#4d2a2a",
+            border_width=2,
+            border_color="#d32f2f",
             text_color="#ffffff",
             width=300,
             height=50,
@@ -1547,13 +1448,12 @@ class FaceApp(ctk.CTk):
         dialog.geometry("500x450")
         dialog.transient(self)
         dialog.grab_set()
-        dialog.configure(fg_color="#050505")
-        dialog.resizable(False, False)
+        dialog.configure(fg_color="#0a0a0a")
         dialog.geometry("+%d+%d" % (self.winfo_x() + 550, self.winfo_y() + 225))
 
         frame = ctk.CTkFrame(
             dialog,
-            fg_color="rgba(51, 51, 51, 0.9)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1562,7 +1462,7 @@ class FaceApp(ctk.CTk):
 
         ctk.CTkLabel(
             frame,
-            text="🔐 Change Admin PIN",
+            text="Change Admin PIN",
             font=("Segoe UI", 24, "bold"),
             text_color="#ffffff"
         ).pack(pady=30)
@@ -1573,10 +1473,10 @@ class FaceApp(ctk.CTk):
             width=350,
             height=50,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
-            show="•",
+            show="*",
             font=("Segoe UI", 14)
         )
         old_pin_entry.pack(pady=10)
@@ -1587,10 +1487,10 @@ class FaceApp(ctk.CTk):
             width=350,
             height=50,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
-            show="•",
+            show="*",
             font=("Segoe UI", 14)
         )
         new_pin_entry.pack(pady=10)
@@ -1601,10 +1501,10 @@ class FaceApp(ctk.CTk):
             width=350,
             height=50,
             corner_radius=50,
-            fg_color="rgba(40, 40, 40, 0.6)",
+            fg_color="#2a2a2a",
             border_width=2,
             border_color="#333333",
-            show="•",
+            show="*",
             font=("Segoe UI", 14)
         )
         confirm_pin_entry.pack(pady=10)
@@ -1635,8 +1535,8 @@ class FaceApp(ctk.CTk):
             frame,
             text="Update PIN",
             command=update_pin,
-            fg_color="rgba(107, 45, 140, 0.4)",
-            hover_color="rgba(107, 45, 140, 0.6)",
+            fg_color="#2d1f3d",
+            hover_color="#3d2f4d",
             border_width=2,
             border_color="#6b2d8c",
             text_color="#ffffff",
@@ -1647,13 +1547,13 @@ class FaceApp(ctk.CTk):
         ).pack(pady=30)
 
     def show_admin_details(self):
-        """Show all admins in a table (READ-ONLY)"""
+        """Show all admins (READ-ONLY)"""
         for w in self.content_area.winfo_children():
             w.destroy()
 
         admin_frame = ctk.CTkFrame(
             self.content_area,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1678,11 +1578,11 @@ class FaceApp(ctk.CTk):
                 admin_frame,
                 text="No admins found",
                 font=("Segoe UI", 18),
-                text_color="#888888"
+                text_color="#cccccc"
             ).pack(pady=50)
             return
 
-        # Table container
+        # Table Header
         table_frame = ctk.CTkScrollableFrame(
             admin_frame,
             fg_color="transparent"
@@ -1691,7 +1591,7 @@ class FaceApp(ctk.CTk):
 
         # Column headers
         headers = ["User ID", "Name", "Email", "Age", "Gender", "Phone", "Department"]
-        header_row = ctk.CTkFrame(table_frame, fg_color="rgba(42, 42, 42, 0.9)", corner_radius=10)
+        header_row = ctk.CTkFrame(table_frame, fg_color="#2a2a2a", corner_radius=10)
         header_row.pack(fill="x", pady=5)
         
         for i, header in enumerate(headers):
@@ -1701,12 +1601,15 @@ class FaceApp(ctk.CTk):
                 font=("Segoe UI", 12, "bold"),
                 text_color="#ffffff",
                 width=130
-            ).grid(row=0, column=i, padx=5, pady=12)
+            ).grid(row=0, column=i, padx=5, pady=10)
 
         # Data rows
         for idx, admin in admins.iterrows():
-            row_color = "rgba(31, 31, 31, 0.9)" if idx % 2 == 0 else "rgba(37, 37, 37, 0.9)"
-            row_frame = ctk.CTkFrame(table_frame, fg_color=row_color, corner_radius=10)
+            row_frame = ctk.CTkFrame(
+                table_frame, 
+                fg_color="#1f1f1f" if idx % 2 == 0 else "#252525",
+                corner_radius=10
+            )
             row_frame.pack(fill="x", pady=2)
             
             values = [
@@ -1720,30 +1623,29 @@ class FaceApp(ctk.CTk):
             ]
             
             for i, value in enumerate(values):
-                display_text = str(value)[:15] + "..." if len(str(value)) > 15 else str(value)
                 ctk.CTkLabel(
                     row_frame,
-                    text=display_text,
+                    text=str(value)[:15] + "..." if len(str(value)) > 15 else str(value),
                     font=("Segoe UI", 11),
                     text_color="#cccccc",
                     width=130
-                ).grid(row=0, column=i, padx=5, pady=10)
+                ).grid(row=0, column=i, padx=5, pady=8)
 
     def show_user_details(self):
-        """Show all users in a table (EDITABLE with Delete)"""
+        """Show all users (EDITABLE with Delete)"""
         for w in self.content_area.winfo_children():
             w.destroy()
 
         user_frame = ctk.CTkFrame(
             self.content_area,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
         )
         user_frame.pack(fill="both", expand=True)
 
-        # Header with refresh button
+        # Header
         header_frame = ctk.CTkFrame(user_frame, fg_color="transparent")
         header_frame.pack(fill="x", padx=30, pady=20)
         
@@ -1754,12 +1656,13 @@ class FaceApp(ctk.CTk):
             text_color="#ffffff"
         ).pack(side="left")
         
+        # Refresh button
         ctk.CTkButton(
             header_frame,
             text="🔄 Refresh",
             command=self.show_user_details,
-            fg_color="rgba(42, 42, 42, 0.9)",
-            hover_color="rgba(58, 58, 58, 0.9)",
+            fg_color="#2a2a2a",
+            hover_color="#3a3a3a",
             width=100,
             height=35,
             corner_radius=50
@@ -1772,11 +1675,11 @@ class FaceApp(ctk.CTk):
                 user_frame,
                 text="No users found",
                 font=("Segoe UI", 18),
-                text_color="#888888"
+                text_color="#cccccc"
             ).pack(pady=50)
             return
 
-        # Table container
+        # Table
         table_frame = ctk.CTkScrollableFrame(
             user_frame,
             fg_color="transparent"
@@ -1785,7 +1688,7 @@ class FaceApp(ctk.CTk):
 
         # Column headers
         headers = ["User ID", "Name", "Email", "Age", "Gender", "Phone", "Dept", "Actions"]
-        header_row = ctk.CTkFrame(table_frame, fg_color="rgba(42, 42, 42, 0.9)", corner_radius=10)
+        header_row = ctk.CTkFrame(table_frame, fg_color="#2a2a2a", corner_radius=10)
         header_row.pack(fill="x", pady=5)
         
         for i, header in enumerate(headers):
@@ -1795,12 +1698,15 @@ class FaceApp(ctk.CTk):
                 font=("Segoe UI", 11, "bold"),
                 text_color="#ffffff",
                 width=110
-            ).grid(row=0, column=i, padx=3, pady=12)
+            ).grid(row=0, column=i, padx=3, pady=10)
 
         # Data rows
         for idx, user in users.iterrows():
-            row_color = "rgba(31, 31, 31, 0.9)" if idx % 2 == 0 else "rgba(37, 37, 37, 0.9)"
-            row_frame = ctk.CTkFrame(table_frame, fg_color=row_color, corner_radius=10)
+            row_frame = ctk.CTkFrame(
+                table_frame, 
+                fg_color="#1f1f1f" if idx % 2 == 0 else "#252525",
+                corner_radius=10
+            )
             row_frame.pack(fill="x", pady=2)
             
             user_id = user.get("user_id", "")
@@ -1816,10 +1722,9 @@ class FaceApp(ctk.CTk):
             ]
             
             for i, value in enumerate(values):
-                display_text = str(value)[:12] + ".." if len(str(value)) > 12 else str(value)
                 ctk.CTkLabel(
                     row_frame,
-                    text=display_text,
+                    text=str(value)[:12] + ".." if len(str(value)) > 12 else str(value),
                     font=("Segoe UI", 10),
                     text_color="#cccccc",
                     width=110
@@ -1834,8 +1739,8 @@ class FaceApp(ctk.CTk):
                 action_frame,
                 text="✏️",
                 command=lambda u=user.to_dict(): self.edit_user_dialog(u),
-                fg_color="rgba(59, 124, 184, 0.5)",
-                hover_color="rgba(59, 124, 184, 0.7)",
+                fg_color="#1f2d3d",
+                hover_color="#2f3d4d",
                 width=35,
                 height=30,
                 corner_radius=5
@@ -1846,8 +1751,8 @@ class FaceApp(ctk.CTk):
                 action_frame,
                 text="🗑️",
                 command=lambda uid=user_id: self.delete_user_confirm(uid),
-                fg_color="rgba(211, 47, 47, 0.5)",
-                hover_color="rgba(211, 47, 47, 0.7)",
+                fg_color="#3d1a1a",
+                hover_color="#4d2a2a",
                 width=35,
                 height=30,
                 corner_radius=5
@@ -1860,12 +1765,12 @@ class FaceApp(ctk.CTk):
         dialog.geometry("500x600")
         dialog.transient(self)
         dialog.grab_set()
-        dialog.configure(fg_color="#050505")
+        dialog.configure(fg_color="#0a0a0a")
         dialog.geometry("+%d+%d" % (self.winfo_x() + 550, self.winfo_y() + 150))
 
         frame = ctk.CTkScrollableFrame(
             dialog,
-            fg_color="rgba(51, 51, 51, 0.9)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1874,56 +1779,52 @@ class FaceApp(ctk.CTk):
 
         ctk.CTkLabel(
             frame,
-            text="✏️ Edit User Details",
+            text="Edit User Details",
             font=("Segoe UI", 24, "bold"),
             text_color="#ffffff"
         ).pack(pady=20)
 
-        ctk.CTkLabel(
-            frame,
-            text=f"User ID: {user['user_id']}",
-            font=("Segoe UI", 12),
-            text_color="#888888"
-        ).pack(pady=5)
+        # User ID (read-only)
+        ctk.CTkLabel(frame, text=f"User ID: {user['user_id']}", text_color="#888888").pack(pady=5)
 
         # Name
-        name_entry = ctk.CTkEntry(frame, placeholder_text="Full Name", width=350, height=45, corner_radius=50, fg_color="rgba(40, 40, 40, 0.6)")
+        name_entry = ctk.CTkEntry(frame, placeholder_text="Full Name", width=350, height=45, corner_radius=50, fg_color="#2a2a2a")
         name_entry.insert(0, user.get("name", ""))
         name_entry.pack(pady=8)
 
         # Email
-        email_entry = ctk.CTkEntry(frame, placeholder_text="Email", width=350, height=45, corner_radius=50, fg_color="rgba(40, 40, 40, 0.6)")
+        email_entry = ctk.CTkEntry(frame, placeholder_text="Email", width=350, height=45, corner_radius=50, fg_color="#2a2a2a")
         email_entry.insert(0, user.get("email", ""))
         email_entry.pack(pady=8)
 
         # Age
-        age_entry = ctk.CTkEntry(frame, placeholder_text="Age", width=350, height=45, corner_radius=50, fg_color="rgba(40, 40, 40, 0.6)")
+        age_entry = ctk.CTkEntry(frame, placeholder_text="Age", width=350, height=45, corner_radius=50, fg_color="#2a2a2a")
         age_entry.insert(0, str(user.get("age", "")))
         age_entry.pack(pady=8)
 
         # Phone
-        phone_entry = ctk.CTkEntry(frame, placeholder_text="Phone", width=350, height=45, corner_radius=50, fg_color="rgba(40, 40, 40, 0.6)")
+        phone_entry = ctk.CTkEntry(frame, placeholder_text="Phone", width=350, height=45, corner_radius=50, fg_color="#2a2a2a")
         phone_entry.insert(0, user.get("phone", ""))
         phone_entry.pack(pady=8)
 
         # Department
-        dept_entry = ctk.CTkEntry(frame, placeholder_text="Department", width=350, height=45, corner_radius=50, fg_color="rgba(40, 40, 40, 0.6)")
+        dept_entry = ctk.CTkEntry(frame, placeholder_text="Department", width=350, height=45, corner_radius=50, fg_color="#2a2a2a")
         dept_entry.insert(0, user.get("dept", ""))
         dept_entry.pack(pady=8)
 
         def save_changes():
             # Validation
             if not self.validate_name(name_entry.get()):
-                msg.showerror("Error", "Invalid name format. Must have first and last name.")
+                msg.showerror("Error", "Invalid name format")
                 return
             if not self.validate_email(email_entry.get()):
                 msg.showerror("Error", "Invalid email format")
                 return
             if not self.validate_age(age_entry.get()):
-                msg.showerror("Error", "Invalid age. Must be 1-120.")
+                msg.showerror("Error", "Invalid age")
                 return
             if not self.validate_phone(phone_entry.get()):
-                msg.showerror("Error", "Invalid phone. Must be 10 digits.")
+                msg.showerror("Error", "Invalid phone number")
                 return
             
             db.update_user_details(
@@ -1940,11 +1841,12 @@ class FaceApp(ctk.CTk):
 
         ctk.CTkButton(
             frame,
-            text="💾 Save Changes",
+            text="Save Changes",
             command=save_changes,
-            fg_color="#22c55e",
-            hover_color="#16a34a",
-            text_color="#ffffff",
+            fg_color="#1a3d1a",
+            hover_color="#2a4d2a",
+            border_width=2,
+            border_color="#22c55e",
             width=250,
             height=50,
             corner_radius=50,
@@ -1953,19 +1855,19 @@ class FaceApp(ctk.CTk):
 
     def delete_user_confirm(self, user_id):
         """Confirm and delete user"""
-        if msg.askyesno("Confirm Delete", f"Are you sure you want to delete user:\n{user_id}?\n\nThis action cannot be undone."):
+        if msg.askyesno("Confirm Delete", f"Are you sure you want to delete user {user_id}?\nThis action cannot be undone."):
             db.delete_user(user_id)
             msg.showinfo("Success", "✓ User deleted successfully!")
             self.show_user_details()
 
     def show_breach_logs(self):
-        """Show breach logs with images"""
+        """Show breach logs"""
         for w in self.content_area.winfo_children():
             w.destroy()
 
         breach_frame = ctk.CTkFrame(
             self.content_area,
-            fg_color="rgba(51, 51, 51, 0.85)",
+            fg_color="#1a1a1a",
             border_width=2,
             border_color="#333333",
             corner_radius=20
@@ -1984,9 +1886,9 @@ class FaceApp(ctk.CTk):
         if not os.path.exists(breach_base) or not os.listdir(breach_base):
             ctk.CTkLabel(
                 breach_frame,
-                text="No breach logs found\n\nThis is good! No unauthorized access attempts detected.",
-                font=("Segoe UI", 16),
-                text_color="#22c55e"
+                text="No breach logs found",
+                font=("Segoe UI", 18),
+                text_color="#cccccc"
             ).pack(pady=50)
             return
 
@@ -2006,7 +1908,7 @@ class FaceApp(ctk.CTk):
                 continue
             
             # Date header
-            date_header = ctk.CTkFrame(logs_frame, fg_color="rgba(42, 42, 42, 0.9)", corner_radius=10)
+            date_header = ctk.CTkFrame(logs_frame, fg_color="#2a2a2a", corner_radius=10)
             date_header.pack(fill="x", pady=10)
             
             ctk.CTkLabel(
@@ -2014,16 +1916,16 @@ class FaceApp(ctk.CTk):
                 text=f"📅 {date_folder}",
                 font=("Segoe UI", 16, "bold"),
                 text_color="#ffffff"
-            ).pack(side="left", padx=20, pady=12)
+            ).pack(side="left", padx=20, pady=10)
             
             # Count images
             images = [f for f in os.listdir(folder_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
             ctk.CTkLabel(
                 date_header,
-                text=f"{len(images)} unauthorized attempts",
+                text=f"{len(images)} attempts",
                 font=("Segoe UI", 12),
                 text_color="#ff6b6b"
-            ).pack(side="right", padx=20, pady=12)
+            ).pack(side="right", padx=20, pady=10)
             
             # Show images in grid
             img_frame = ctk.CTkFrame(logs_frame, fg_color="transparent")
@@ -2033,34 +1935,20 @@ class FaceApp(ctk.CTk):
                 try:
                     img_path = os.path.join(folder_path, img_file)
                     img = Image.open(img_path)
-                    img = img.resize((160, 120), Image.Resampling.LANCZOS)
-                    photo = ctk.CTkImage(img, size=(160, 120))
+                    img = img.resize((150, 120), Image.Resampling.LANCZOS)
+                    photo = ctk.CTkImage(img, size=(150, 120))
                     
-                    img_container = ctk.CTkFrame(img_frame, fg_color="rgba(31, 31, 31, 0.9)", corner_radius=10)
-                    img_container.grid(row=i//3, column=i%3, padx=10, pady=8)
-                    
-                    img_label = ctk.CTkLabel(img_container, image=photo, text="")
+                    img_label = ctk.CTkLabel(
+                        img_frame, 
+                        image=photo, 
+                        text="",
+                        fg_color="#1f1f1f",
+                        corner_radius=10
+                    )
                     img_label.image = photo
-                    img_label.pack(padx=5, pady=5)
-                    
-                    # Timestamp from filename
-                    ctk.CTkLabel(
-                        img_container,
-                        text=img_file.split("_")[1] if "_" in img_file else "Unknown",
-                        font=("Segoe UI", 9),
-                        text_color="#888888"
-                    ).pack(pady=(0, 5))
-                    
+                    img_label.grid(row=i//3, column=i%3, padx=10, pady=5)
                 except Exception as e:
                     print(f"Error loading breach image: {e}")
-            
-            if len(images) > 6:
-                ctk.CTkLabel(
-                    logs_frame,
-                    text=f"... and {len(images) - 6} more images",
-                    font=("Segoe UI", 11),
-                    text_color="#888888"
-                ).pack(pady=5)
 
     def logout(self):
         """Logout user"""
